@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chronic Disease Risk Dashboard (Clinical Triage & Population Health)</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b1329;
+      --card-bg: #152238;
+      --card-border: #233554;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --primary: #38bdf8;
+      --primary-dark: #0284c7;
+      --success: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding-bottom: 40px;
+    }
+    header {
+      background: linear-gradient(135deg, #0b1329 0%, #1e1b4b 100%);
+      border-bottom: 1px solid var(--card-border);
+      padding: 24px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .header-title h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, #f87171, #fbbf24, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .header-title p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .nav-tabs {
+      display: flex;
+      gap: 10px;
+      background: #070d1e;
+      padding: 6px;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px 18px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: var(--primary-dark);
+      color: #fff;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 24px auto;
+      padding: 0 24px;
+    }
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .kpi-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 4px; height: 100%;
+      background: var(--primary);
+    }
+    .kpi-card.danger::before { background: var(--danger); }
+    .kpi-card.warning::before { background: var(--warning); }
+    .kpi-card.success::before { background: var(--success); }
+    .kpi-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .kpi-val {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin-top: 6px;
+      color: #fff;
+    }
+    .kpi-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 992px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    .chart-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px 24px;
+    }
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .chart-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .chart-badge {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      font-weight: 600;
+    }
+    .chart-container {
+      position: relative;
+      height: 310px;
+      width: 100%;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .table-container {
+      overflow-x: auto;
+      max-height: 340px;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+    th, td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--card-border);
+    }
+    th {
+      background: #0f1c33;
+      color: var(--text-muted);
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+    }
+    tr:hover { background: rgba(255, 255, 255, 0.03); }
+    .badge-high {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 700;
+    }
+    footer {
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 32px;
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-title">
+      <h1>Chronic Disease Risk Dashboard</h1>
+      <p>Clinical Triage &amp; Risk-Factor Analytics (Heart Disease, Diabetes, Stroke)</p>
+    </div>
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('dash1')">1. Clinical Risk (Dr. Carter)</button>
+      <button class="tab-btn" onclick="switchTab('dash2')">2. Lifestyle Analysis (Emily)</button>
+      <button class="tab-btn" onclick="switchTab('dash3')">3. Population Health (Dr. Nair)</button>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- KPI Row -->
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <span class="kpi-label">Total Cohort</span>
+        <span class="kpi-val">1,000</span>
+        <span class="kpi-sub">Total monitored patients</span>
+      </div>
+      <div class="kpi-card danger">
+        <span class="kpi-label">High-Risk Patients</span>
+        <span class="kpi-val">80 (8.0%)</span>
+        <span class="kpi-sub">Immediate clinical follow-up required</span>
+      </div>
+      <div class="kpi-card warning">
+        <span class="kpi-label">Disease Prevalence</span>
+        <span class="kpi-val">43.9%</span>
+        <span class="kpi-sub">Heart Disease, Diabetes, Stroke</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Average BMI</span>
+        <span class="kpi-val">26.5 kg/m²</span>
+        <span class="kpi-sub">Overweight baseline</span>
+      </div>
+      <div class="kpi-card success">
+        <span class="kpi-label">Average Blood Pressure</span>
+        <span class="kpi-val">123.9 mmHg</span>
+        <span class="kpi-sub">Pre-hypertension cohort mean</span>
+      </div>
+    </div>
+
+    <!-- TAB 1: Clinical Risk Dashboard (Dr. Michael Carter) -->
+    <div id="dash1" class="tab-content active">
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-header">
+            <span class="chart-title">Risk Factors Heatmap (Vitals vs. Disease)</span>
+            <span class="chart-badge">Dr. Carter Persona</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="chartVitals"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <span class="chart-title">High-Risk Patient Roster (Sortable Triage Table)</span>
+            <span class="chart-badge">Top Priority Flag</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Patient ID</th>
+                  <th>Age</th>
+                  <th>BP (mmHg)</th>
+                  <th>Chol (mg/dL)</th>
+                  <th>Glucose</th>
+                  <th>Disease</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody">
+                <tr><td>P0008</td><td>67</td><td>168</td><td>264</td><td>152</td><td>Heart disease</td><td><span class="badge-high">High Risk</span></td></tr>
+                <tr><td>P0023</td><td>72</td><td>174</td><td>282</td><td>188</td><td>Stroke</td><td><span class="badge-high">High Risk</span></td></tr>
+                <tr><td>P0045</td><td>59</td><td>162</td><td>248</td><td>194</td><td>Diabetes</td><td><span class="badge-high">High Risk</span></td></tr>
+                <tr><td>P0071</td><td>64</td><td>158</td><td>271</td><td>145</td><td>Heart disease</td><td><span class="badge-high">High Risk</span></td></tr>
+                <tr><td>P0092</td><td>78</td><td>182</td><td>295</td><td>160</td><td>Stroke</td><td><span class="badge-high">High Risk</span></td></tr>
+                <tr><td>P0114</td><td>53</td><td>154</td><td>242</td><td>210</td><td>Diabetes</td><td><span class="badge-high">High Risk</span></td></tr>
+                <tr><td>P0139</td><td>69</td><td>166</td><td>260</td><td>172</td><td>Heart disease</td><td><span class="badge-high">High Risk</span></td></tr>
+                <tr><td>P0165</td><td>61</td><td>160</td><td>255</td><td>180</td><td>Stroke</td><td><span class="badge-high">High Risk</span></td></tr>
+                <tr><td>P0188</td><td>74</td><td>178</td><td>280</td><td>168</td><td>Heart disease</td><td><span class="badge-high">High Risk</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: Lifestyle Analysis (Emily Rodriguez) -->
+    <div id="dash2" class="tab-content">
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-header">
+            <span class="chart-title">Lifestyle Impact: Smoking &amp; Exercise vs. Disease</span>
+            <span class="chart-badge">Behavioral Analysis</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="chartLifestyle"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <span class="chart-title">Disease Prevalence by BMI Category</span>
+            <span class="chart-badge">Metabolic Health</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="chartBMI"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Population Health (Dr. Priya Nair) -->
+    <div id="dash3" class="tab-content">
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-header">
+            <span class="chart-title">Chronic Disease Prevalence by Age Group</span>
+            <span class="chart-badge">Demographics</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="chartAge"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <span class="chart-title">Acute Symptoms Presentation in High-Risk Cohort</span>
+            <span class="chart-badge">Symptom Distribution</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="chartSymptoms"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>Chronic Disease Risk Dashboard &bull; Clinical Decision Support &bull; <a href="https://github.com/Pari031207/HEALTH" target="_blank">View GitHub Repository</a></p>
+    </footer>
+
+  </div>
+
+  <script>
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.borderColor = '#233554';
+
+    // Chart Vitals
+    new Chart(document.getElementById('chartVitals'), {
+      type: 'bar',
+      data: {
+        labels: ['Heart disease', 'Stroke', 'Diabetes', 'None (Healthy)'],
+        datasets: [
+          { label: 'Avg BP (mmHg)', data: [138.4, 143.1, 126.5, 117.8], backgroundColor: '#ef4444' },
+          { label: 'Avg Cholesterol (mg/dL)', data: [214.2, 208.5, 198.6, 182.1], backgroundColor: '#f59e0b' },
+          { label: 'Avg Glucose (mg/dL)', data: [112.5, 115.0, 146.8, 94.2], backgroundColor: '#38bdf8' }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+
+    // Chart Lifestyle
+    new Chart(document.getElementById('chartLifestyle'), {
+      type: 'bar',
+      data: {
+        labels: ['Smokers (Sedentary)', 'Smokers (Active)', 'Non-Smokers (Sedentary)', 'Non-Smokers (Active)'],
+        datasets: [
+          { label: 'Heart Disease', data: [88, 38, 54, 22], backgroundColor: '#ef4444' },
+          { label: 'Stroke', data: [42, 18, 28, 12], backgroundColor: '#f59e0b' },
+          { label: 'Diabetes', data: [76, 32, 68, 28], backgroundColor: '#38bdf8' }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { x: { stacked: true }, y: { stacked: true } }
+      }
+    });
+
+    // Chart BMI
+    new Chart(document.getElementById('chartBMI'), {
+      type: 'bar',
+      data: {
+        labels: ['Underweight', 'Normal', 'Overweight', 'Obese'],
+        datasets: [
+          { label: 'Disease Prevalence %', data: [18.2, 28.5, 46.2, 68.4], backgroundColor: '#38bdf8', borderRadius: 6 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, max: 100 } }
+      }
+    });
+
+    // Chart Age
+    new Chart(document.getElementById('chartAge'), {
+      type: 'bar',
+      data: {
+        labels: ['<30 yrs', '30–44 yrs', '45–59 yrs', '60+ yrs'],
+        datasets: [
+          { label: 'Heart Disease', data: [12, 34, 76, 118], backgroundColor: '#ef4444' },
+          { label: 'Diabetes', data: [16, 42, 68, 86], backgroundColor: '#38bdf8' },
+          { label: 'Stroke', data: [4, 14, 32, 58], backgroundColor: '#f59e0b' }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { x: { stacked: true }, y: { stacked: true } }
+      }
+    });
+
+    // Chart Symptoms
+    new Chart(document.getElementById('chartSymptoms'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Chest Pain (65% in Heart Disease)', 'Fatigue (58% in Chronic Cohort)', 'Dizziness (60% in Stroke)'],
+        datasets: [{
+          data: [65, 58, 60],
+          backgroundColor: ['#ef4444', '#f59e0b', '#38bdf8']
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false
+      }
+    });
+  </script>
+</body>
+</html>
